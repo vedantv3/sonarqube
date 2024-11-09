@@ -3,38 +3,55 @@ version: '3.8'
 services:
   sonarqube:
     image: sonarqube:latest
-    container_name: c6fd49a676674806aaf2af8aa5d97c5b_sonarqubelatest_d2e87b
-    labels:
-      - eae14b
-    networks:
-      github_network_5dce21196a4e403383bd5147199fbae9:
-        aliases:
-          - sonarqube
+    container_name: sonarqube
     ports:
       - "9000:9000"
     environment:
       - GITHUB_ACTIONS=true
       - CI=true
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9000/api/system/health", "|", "grep", "-q", "UP"]
+      test: curl -f http://localhost:9000/api/system/health || exit 1
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
     volumes:
       - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - sonarnet
     ulimits:
-      nproc: 131072
       nofile:
         soft: 65536
         hard: 131072
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    container_name: sonarqube_db
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+      - POSTGRES_DB=sonar
+    volumes:
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - sonarnet
 
 volumes:
   sonarqube_data:
-  sonarqube_logs:
   sonarqube_extensions:
+  sonarqube_logs:
+  postgresql:
+  postgresql_data:
 
 networks:
-  github_network_5dce21196a4e403383bd5147199fbae9:
-    name: github_network_5dce21196a4e403383bd5147199fbae9
+  sonarnet:
+    driver: bridge
