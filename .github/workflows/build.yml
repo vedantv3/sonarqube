@@ -1,34 +1,40 @@
-name: Build
+version: '3.8'
 
-on:
-  push:
-    branches:
-      - main
+services:
+  sonarqube:
+    image: sonarqube:latest
+    container_name: c6fd49a676674806aaf2af8aa5d97c5b_sonarqubelatest_d2e87b
+    labels:
+      - eae14b
+    networks:
+      github_network_5dce21196a4e403383bd5147199fbae9:
+        aliases:
+          - sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - GITHUB_ACTIONS=true
+      - CI=true
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9000/api/system/health", "|", "grep", "-q", "UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    ulimits:
+      nproc: 131072
+      nofile:
+        soft: 65536
+        hard: 131072
 
-jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
-    
-    services:
-      sonarqube:
-        image: sonarqube:latest
-        ports:
-          - 9000:9000
-        options: > 
-          --health-cmd="curl -s http://localhost:9000/api/system/health | grep -q 'UP'" --health-interval=10s --health-timeout=5s --health-retries=10
-        
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch full history for analysis
-      - name: Wait for SonarQube to be ready
-        run: |
-          until $(curl --output /dev/null --silent --head --fail http://localhost:9000); do
-            echo 'Waiting for SonarQube...'
-            sleep 10
-          done
-      - uses: sonarsource/sonarqube-scan-action@v3
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: "http://localhost:9000"
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+
+networks:
+  github_network_5dce21196a4e403383bd5147199fbae9:
+    name: github_network_5dce21196a4e403383bd5147199fbae9
